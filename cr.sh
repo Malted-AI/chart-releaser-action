@@ -28,6 +28,7 @@ Usage: $(basename "$0") <options>
     -v, --version                 The chart-releaser version to use (default: $DEFAULT_CHART_RELEASER_VERSION)"
         --config                  The path to the chart-releaser config file
     -d, --charts-dir              The charts directory (default: charts)
+    -S, --charts-dir-only-symlinks Consider only symlinked charts in the charts directory
     -o, --owner                   The repo owner
     -r, --repo                    The repo name
         --pages-branch            The repo pages branch
@@ -46,6 +47,7 @@ main() {
   local version="$DEFAULT_CHART_RELEASER_VERSION"
   local config=
   local charts_dir=charts
+  local charts_dir_only_symlinks=false
   local owner=
   local repo=
   local install_dir=
@@ -151,6 +153,12 @@ parse_command_line() {
         echo "ERROR: '-d|--charts-dir' cannot be empty." >&2
         show_help
         exit 1
+      fi
+      ;;
+    -S | --charts-dir-only-symlinks)
+      if [[ -n "${2:-}" ]]; then
+        charts_dir_only_symlinks="$2"
+        shift
       fi
       ;;
     -o | --owner)
@@ -306,7 +314,15 @@ lookup_changed_charts() {
   local commit="$1"
 
   local changed_files
-  changed_files=$(git diff --find-renames --name-only "$commit" -- "$charts_dir")
+
+  # Handle the case where our "charts_dir" contains only symlinks to charts elsewhere
+  # This is useful when we want to publish only a subset of charts from a larger monorepo
+  if [ "$charts_dir_only_symlinks" = "true" ]; then
+    echo "Charts directory set to only consider symlinks. Finding changed charts via symlink targets..."
+    changed_files=$(git diff --find-renames --name-only "$commit" -- $(find $charts_dir -type l -exec readlink -f {} \;))
+  else
+    changed_files=$(git diff --find-renames --name-only "$commit" -- "$charts_dir")
+  fi
 
   local depth=$(($(tr "/" "\n" <<<"$charts_dir" | sed '/^\(\.\)*$/d' | wc -l) + 1))
   local fields="1-${depth}"

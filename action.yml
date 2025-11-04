@@ -30,6 +30,10 @@ inputs:
     description: The charts directory
     required: false
     default: charts
+  charts_dir_only_symlinks:
+    description: "Consider only symlinked charts in the charts directory"
+    required: false
+    default: false
   install_dir:
     description: "Where to install the cr tool"
     required: false
@@ -74,6 +78,7 @@ runs:
 
         args=(--owner "$owner" --repo "$repo")
         args+=(--charts-dir "${{ inputs.charts_dir }}")
+        args+=(--charts-dir-only-symlinks "${{ inputs.charts_dir_only_symlinks }}")
 
         if [[ -n "${{ inputs.version }}" ]]; then
             args+=(--version "${{ inputs.version }}")
